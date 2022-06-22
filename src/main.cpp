@@ -1,122 +1,130 @@
 #include <Arduino.h>
-#include <time.h>
+#include <TimeLib.h>
+#include <math.h>
+#include <Wire.h>
+#include <DS3231.h>
 
+DS3231 reloj;
+
+int PINES_DE_CANALES[5] = {13, 12, 11, 10, 9}; //pinOut que le corresponde a cada canal
 
 struct riego{           
-  bool estado=1;  
-  int intervalo=1;         
-  int tiempo=20;   
+  int hora;                 //riegos por dia      
+  int tiempo_encendido;     //duracion de cada riego
 };
-int n=1;
-int IByte;
-struct riego lista[5];
 
+/*
+* los tiempos de riegos se guardaran en la variable valvula, que es una array de array de la estructura riego
+* de la forma valvulas[i][j], el valor i corresponde al canal y la j sera una array de riego, que contedra cada
+* hora de riego y su duracion (.hora, .tiempo_encendido)
+*/
+struct riego valvulas[5][5];
 
-void valvulasEstado(int i, bool b){
-  digitalWrite(i+n, b);
-
-  Serial.print("valvula: ");
-  Serial.print(i+1);
-  Serial.print("  estado: ");
-  Serial.println(b);
-}
-
-
-int minute(){
-  time_t now;
-  time(&now);
-  return (localtime(&now)->tm_min);
-}
-
-
-int second(){
-  time_t now;
-  time(&now);
-  return (localtime(&now)->tm_sec);
-}
-
-
-int esperarCaracter(){
-  while (!(Serial.available()>0)){
+void esperar_entero(int &i)
+{
+  while (!(Serial.available()>0))
+  {
     delay(10);}
-  return Serial.read();
+  i =  int(Serial.read())-'0';
 }
 
-
-bool sameTime(int i){
-  if(((minute()%lista[i].intervalo)==0) && (second()<=lista[i].tiempo)) return 1;
-  else return 0;
+void esperar_entero_n_digitos(int &i, int n)
+{
+  i = 0;
+  for(int j = n-1; j>=0; j--)
+  {
+    esperar_entero(n);
+    i += n*pow(10,j);
+  }
 }
 
-
-void printDigits(int digits){
+void agregar_riego() //ingresar horaio en formato 24h 00:00 (horas, minutos)
+{
+  int canal;
+  esperar_entero(canal);
+  Serial.println(canal);
+  int h, t, r = 0;
+  while (valvulas[0][r].tiempo_encendido != 0 && r < 5)
+    r++;
+  esperar_entero_n_digitos(h, 2);
+  valvulas[canal][r].hora = h;
+  Serial.print("  -  ");
+  Serial.print(h);
+  esperar_entero_n_digitos(t, 2);
+  valvulas[canal][r].tiempo_encendido = t;
   Serial.print(":");
-  if(digits < 10)
-    Serial.print('0');
-  Serial.print(digits);
+  Serial.print(t);
+  Serial.println(" ");
+  Serial.print(r);
+  Serial.println(" ");
 }
 
-
-void changeBool(bool &a){
-  if (a) a=0;
-  else a=1;  
+void eliminar_riegos()
+{
+  int r;
+  esperar_entero(r);
+  digitalWrite(PINES_DE_CANALES[r], 0);
+  for (int j = 0; j < 5; j++)
+    valvulas[r][j].tiempo_encendido = 0;
 }
 
-
-void modificarCanal(){
-  Serial.println("elegir canal");
-  int incomingByte = esperarCaracter()-'1' ;
-  changeBool(lista[incomingByte].estado);
-
-  Serial.print("estado cambiado. Valvula: ");
-  Serial.print(incomingByte);
-  Serial.print("  Estado: ");
-  Serial.println(lista[incomingByte].estado);
+void setear_hora()
+{
+  int h , m;
+  esperar_entero_n_digitos(h, 2);
+  esperar_entero_n_digitos(m, 2);
+  reloj.setMinute(h);
+  reloj.setSecond(m);
 }
-
-
-void modificarIntervalo(){ //numeros de 1 caracter
-  Serial.println("elegir canal");
-  int canal = esperarCaracter()-'1';
-  Serial.println("periodo: ");
-  int periodo = esperarCaracter()-'0';
-  Serial.println("Tiempo en alto");
-  int t_on = esperarCaracter()-'0';
-  lista[canal].tiempo=t_on;
-  lista[canal].intervalo=periodo;
-}
-
-
-void setup() {
+/**********************************************************************************************************/
+void setup(){
   Serial.begin(9600);
-  //setPines();
-  lista[4].intervalo=1;
-  lista[4].tiempo=10;
+  Wire.begin();
+  pinMode(13, OUTPUT);
+  Serial.begin(9600);
 }
-
-
-void loop() {
-
-  if (Serial.available() > 0) {
-    // leer sigiente byte
-    IByte = Serial.read();
-    switch (IByte){
-    case 'A'://modificar estado de canal n
+/**********************************************************************************************************/
+void loop() 
+{
+  /************************************************************/
+  /*                            Menu                          */
+  /************************************************************/
+  if (Serial.available() > 0)  //leer y eligir una opcion 
+  { 
+    int Byte = Serial.read();  // leer un byte de entrada
+    switch (Byte){
+    case 'A':                  //agregar riego
       delay(100);
-      modificarCanal();
+      Serial.print("   A    ");
+      agregar_riego();
+      
       break;
-    case 'B'://modificar intervalo
-      modificarIntervalo();
+    case 'B':                  //eliminar riegos de un canal 
+      delay(100);
+      eliminar_riegos();
+      break;
+    case 'C':                  //setear hora
+      delay(100);
+      setear_hora();
       break;
     default:
       break;
     }
   }
-
-  for (int i = 0; i < 5; i++){
-    if(sameTime(i) && lista[i].estado) valvulasEstado(i,1);
-    else valvulasEstado(i,0);
+  /************************************************************/
+  /*                   Activar valvulas                       */
+  /************************************************************/
+  for (int i = 0; i<5; i++)   //recorrer vavulas
+  {
+    for (int j = 0; j<5; j++) //recorres riegos
+    { 
+      if(reloj.getMinute() == valvulas[i][j].hora)
+        if (valvulas[i][j].tiempo_encendido != 0)
+          digitalWrite(PINES_DE_CANALES[i], (valvulas[i][j].tiempo_encendido > reloj.getSecond()));
+    }
   }
-  delay(50);
+  Serial.print(reloj.getMinute());
+  Serial.print(":");
+  Serial.println(reloj.getSecond());
+  delay(500);
 }
-
