@@ -4,6 +4,7 @@
 #include <DS3231.h>
 #include <LiquidCrystal_I2C.h>
 #include <Keypad.h>
+#include <EEPROM.h>
 
 const byte rowsCount = 4;
 const byte columsCount = 4;
@@ -127,11 +128,13 @@ void agregar_riego()
     r++;
   esperar_entero_n_digitos_imprimiendo(h, 2, 0, 1);
   valvulas[canal][r].hora = h;
+
   lcd.setCursor(2,1);
   lcd.print(":");
   esperar_entero_n_digitos_imprimiendo(t, 2, 3, 1);
   valvulas[canal][r].tiempo_encendido = t;
   delay(1000);
+  actualizar_EEprom_desde_riego(true);
 }
 
 void eliminar_riegos()
@@ -147,6 +150,7 @@ void eliminar_riegos()
   for (int j = 0; j < 5; j++)
     valvulas[r][j].tiempo_encendido = 0;
   delay(1000);
+  actualizar_EEprom_desde_riego(false);
 }
 
 void setear_hora()
@@ -186,6 +190,19 @@ void ver_riegos()
   }
 }
 
+void actualizar_EEprom_desde_riego(bool act)
+{
+  if (act)
+    EEPROM.put(1,riego);
+  else
+    EEPROM.update(1, riego);
+}
+
+void actualiazar_riego_desde_eeprom()
+{
+  EEPROM.get(1, riego);
+}
+
 /**********************************************************************************************************/
 
 void setup()
@@ -195,6 +212,7 @@ void setup()
   pinMode(13, OUTPUT);
   lcd.init();
   lcd.backlight();
+  actualiazar_riego_desde_eeprom();
 }
 
 /**********************************************************************************************************/
