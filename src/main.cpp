@@ -135,6 +135,7 @@ void agregar_riego()
   valvulas[canal][r].tiempo_encendido = t;
   delay(1000);
   actualizar_EEprom_desde_riego(true);
+  enviar_info_pag();
 }
 
 void eliminar_riegos()
@@ -151,6 +152,7 @@ void eliminar_riegos()
     valvulas[r][j].tiempo_encendido = 0;
   delay(1000);
   actualizar_EEprom_desde_riego(false);
+  enviar_info_pag();
 }
 
 void setear_hora()
@@ -202,6 +204,17 @@ void actualiazar_riego_desde_eeprom()
 {
   EEPROM.get(1, riego);
 }
+
+void enviar_info_pag(){
+  //POST
+  delay(100);
+}
+
+void recibir_info_pag(){
+  //GET
+  delay(100);
+}
+
 
 /**********************************************************************************************************/
 
