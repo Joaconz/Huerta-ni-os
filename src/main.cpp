@@ -23,7 +23,7 @@ Keypad keypad = Keypad(makeKeymap(keys), rowPins, columnPins, rowsCount, columsC
 LiquidCrystal_I2C lcd(0x27,16,2);  
 
 DS3231 reloj;
-int NIVEL_DE_HUMEDAD = 70; //en porsentaje
+int NIVEL_DE_HUMEDAD = 80; //en porsentaje
 int PINES_DE_CANALES[5] = {13, 4, 3, 2, 1}; //pinOut que le corresponde a cada canal
 int analogPin = A0; 
 
@@ -206,12 +206,15 @@ void ver_riegos()
 int rr=0;
 bool humedadAlta()
 {
+  int pocentajeHumedad = map(analogRead(analogPin), 366, 1024, 100, 0);
+
   Serial.println("");
   Serial.print("r: ");
   Serial.println(rr);
   Serial.print("humedad: ");
-  Serial.println(1024-analogRead(analogPin));
-  if((1024-analogRead(analogPin))>(((NIVEL_DE_HUMEDAD*1024)/10)))
+  Serial.println(analogRead(analogPin));
+  Serial.println(pocentajeHumedad);
+  if(pocentajeHumedad>NIVEL_DE_HUMEDAD)
     rr++;
   else
     rr=0;
