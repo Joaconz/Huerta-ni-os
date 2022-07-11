@@ -14,8 +14,8 @@ char keys[rowsCount][columsCount] = {
    { '7','8','9', 'C' },
    { '*','0','#', 'D' }
 };
-const byte rowPins[rowsCount] = {12, 11, 10 ,9};
-const byte columnPins[columsCount] = {8, 7, 6,5 };
+const byte rowPins[rowsCount] = {12, 11, 10 , 9};
+const byte columnPins[columsCount] = {8, 7, 6, 5 };
 
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, columnPins, rowsCount, columsCount);
 
@@ -42,7 +42,7 @@ struct riego valvulas[5][5];
 void actualizar_EEprom_desde_riego(bool act)
 {
   if (act)
-    EEPROM.put(1,valvulas);
+    EEPROM.put(1, valvulas);
   else
     EEPROM.update(1, valvulas);
 }
@@ -57,18 +57,18 @@ void esperar_entero(int &i)
   int car; 
   do
   {
-    car = keypad.getKey()-'0';
-  } while (!(car>=0 && car <=9));
+    car = keypad.getKey() - '0';
+  } while (!(car >= 0 && car <= 9));
   i = car;
 }
 
 void escribir_menu()
 {
   lcd.clear();
-  if((reloj.getSecond()/2)%2){
-    lcd.setCursor(0,0);
+  if((reloj.getSecond() / 2) % 2){
+    lcd.setCursor(0, 0);
     lcd.print("A agregar riego");
-    lcd.setCursor(0,1);
+    lcd.setCursor(0, 1);
     lcd.print("B eliminar riego");
     }
   else 
@@ -93,7 +93,7 @@ void esperar_entero_n_digitos(int &i, int dig)
 
 void imprimir_entero(int i, int c, int f)
 {
-  lcd.setCursor(c, f);
+    lcd.setCursor(c, f);
   int d1, d2;
   if (i>9)
   {
@@ -105,9 +105,9 @@ void imprimir_entero(int i, int c, int f)
     d1=0;
     d2=i;
   }
-  lcd.print(d1);
-  lcd.setCursor(c+1,f);
-  lcd.print(d2);
+    lcd.print(d1);
+    lcd.setCursor(c+1,f);
+    lcd.print(d2);
 }
 
 void esperar_entero_n_digitos_imprimiendo(int &i, int dig, int c, int f)
@@ -117,10 +117,10 @@ void esperar_entero_n_digitos_imprimiendo(int &i, int dig, int c, int f)
   for(int j = dig-1; j>=0; j--)
   {
     esperar_entero(n);
-    lcd.setCursor(c, f);
-    lcd.print(n);
+      lcd.setCursor(c, f);
+      lcd.print(n);
     c++;
-    i += n*pow(10,j);
+    i += n*pow(10, j);
   }
 }
 //ingresar horaio en formato 24h 00:00 (horas, minutos)
@@ -143,7 +143,7 @@ void agregar_riego()
   esperar_entero_n_digitos_imprimiendo(h, 2, 0, 1);
   valvulas[canal][r].hora = h;
 
-  lcd.setCursor(2,1);
+  lcd.setCursor(2, 1);
   lcd.print(":");
   esperar_entero_n_digitos_imprimiendo(t, 2, 3, 1);
   valvulas[canal][r].tiempo_encendido = t;
@@ -203,23 +203,23 @@ void ver_riegos()
     }
   }
 }
-int rr=0;
+
+int rr = 0;
 bool humedadAlta()
 {
   int pocentajeHumedad = map(analogRead(analogPin), 366, 1024, 100, 0);
-
-  Serial.println("");
-  Serial.print("r: ");
-  Serial.println(rr);
-  Serial.print("humedad: ");
-  Serial.println(analogRead(analogPin));
-  Serial.println(pocentajeHumedad);
-  if(pocentajeHumedad>NIVEL_DE_HUMEDAD)
+    Serial.println("");
+    Serial.print("r: ");
+    Serial.println(rr);
+    Serial.print("humedad: ");
+    Serial.println(analogRead(analogPin));
+    Serial.println(pocentajeHumedad);
+  if(pocentajeHumedad > NIVEL_DE_HUMEDAD)
     rr++;
   else
-    rr=0;
-  if (rr>=300){
-    rr=300; return true;}
+    rr = 0;
+  if (rr >= 300){
+    rr = 300; return true;}
   else return false;
 }
 
@@ -278,14 +278,14 @@ void loop()
     for (int i = 0; i<5; i++)   //recorrer vavulas
         digitalWrite(PINES_DE_CANALES[i], 0);
   else{
-  for (int i = 0; i<5; i++)   //recorrer vavulas
-    for (int j = 0; j<5; j++) //recorres riegos
+  for (int i = 0; i < 5; i++)   //recorrer vavulas
+    for (int j = 0; j < 5; j++) //recorres riegos
       if(reloj.getMinute() == valvulas[i][j].hora)
         if (valvulas[i][j].tiempo_encendido != 0)
           digitalWrite(PINES_DE_CANALES[i], (valvulas[i][j].tiempo_encendido >= reloj.getSecond()));
   }
-  Serial.print(reloj.getMinute());
-  Serial.print(":");
-  Serial.println(reloj.getSecond());
+    Serial.print(reloj.getMinute());
+    Serial.print(":");
+    Serial.println(reloj.getSecond());
   delay(100);  
 }
