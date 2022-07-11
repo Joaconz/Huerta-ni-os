@@ -23,8 +23,9 @@ Keypad keypad = Keypad(makeKeymap(keys), rowPins, columnPins, rowsCount, columsC
 LiquidCrystal_I2C lcd(0x27,16,2);  
 
 DS3231 reloj;
-
-int PINES_DE_CANALES[5] = {13, 12, 11, 10, 9}; //pinOut que le corresponde a cada canal
+int NIVEL_DE_HUMEDAD = 70; //en porsentaje
+int PINES_DE_CANALES[5] = {13, 4, 3, 2, 1}; //pinOut que le corresponde a cada canal
+int analogPin = A0; 
 
 struct riego{           
   int hora;                 //hora de riego      
@@ -37,6 +38,19 @@ struct riego{
 * hora de riego y su duracion (.hora, .tiempo_encendido)
 */
 struct riego valvulas[5][5];
+
+void actualizar_EEprom_desde_riego(bool act)
+{
+  if (act)
+    EEPROM.put(1,valvulas);
+  else
+    EEPROM.update(1, valvulas);
+}
+
+void actualiazar_riego_desde_eeprom()
+{
+  EEPROM.get(1, valvulas);
+}
 
 void esperar_entero(int &i)
 {
@@ -172,7 +186,7 @@ void ver_riegos()
   int canal;
   lcd.clear();
   lcd.print("ver valvula");
-  esperar_entero_n_digitos_imprimiendo(canal, 1, 0,0);
+  esperar_entero_n_digitos_imprimiendo(canal, 1, 0,1);
   delay(1000);
   for (int i = 0; i < 5; i++)
   {
@@ -181,26 +195,29 @@ void ver_riegos()
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("horario: ");
-      imprimir_entero(valvulas[canal][i].hora, 14, 0);
+      imprimir_entero(valvulas[canal][i].hora, 13, 0);
       lcd.setCursor(0, 1);
-      lcd.print("tiempo riego: ");
-      imprimir_entero(valvulas[canal][i].tiempo_encendido, 14, 1);
+      lcd.print("tiempo riego:");
+      imprimir_entero(valvulas[canal][i].tiempo_encendido, 13, 1);
       delay(2000);
     }
   }
 }
-
-void actualizar_EEprom_desde_riego(bool act)
+int rr=0;
+bool humedadAlta()
 {
-  if (act)
-    EEPROM.put(1,riego);
+  Serial.println("");
+  Serial.print("r: ");
+  Serial.println(rr);
+  Serial.print("humedad: ");
+  Serial.println(1024-analogRead(analogPin));
+  if((1024-analogRead(analogPin))>(((NIVEL_DE_HUMEDAD*1024)/10)))
+    rr++;
   else
-    EEPROM.update(1, riego);
-}
-
-void actualiazar_riego_desde_eeprom()
-{
-  EEPROM.get(1, riego);
+    rr=0;
+  if (rr>=300){
+    rr=300; return true;}
+  else return false;
 }
 
 /**********************************************************************************************************/
@@ -209,7 +226,8 @@ void setup()
 {
   Serial.begin(9600);
   Wire.begin();
-  pinMode(13, OUTPUT);
+  for (auto &&i : PINES_DE_CANALES)
+    pinMode(i, OUTPUT);
   lcd.init();
   lcd.backlight();
   actualiazar_riego_desde_eeprom();
@@ -245,7 +263,7 @@ void loop()
       break;
     case 'D':
       delay(100);
-      ver_riegos();                                 //visualizar riegos
+      ver_riegos();            //visualizar riegos
       break;
     default:
       break;
@@ -253,13 +271,18 @@ void loop()
   //************************************************************//
   //                    Activar valvulas                        //
   //************************************************************//
+  if(humedadAlta())
+    for (int i = 0; i<5; i++)   //recorrer vavulas
+        digitalWrite(PINES_DE_CANALES[i], 0);
+  else{
   for (int i = 0; i<5; i++)   //recorrer vavulas
     for (int j = 0; j<5; j++) //recorres riegos
       if(reloj.getMinute() == valvulas[i][j].hora)
         if (valvulas[i][j].tiempo_encendido != 0)
           digitalWrite(PINES_DE_CANALES[i], (valvulas[i][j].tiempo_encendido >= reloj.getSecond()));
-  //Serial.print(reloj.getMinute());
-  //Serial.print(":");
-  //Serial.println(reloj.getSecond());
-  delay(500);
+  }
+  Serial.print(reloj.getMinute());
+  Serial.print(":");
+  Serial.println(reloj.getSecond());
+  delay(100);  
 }

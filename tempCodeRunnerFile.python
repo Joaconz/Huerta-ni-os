@@ -1,0 +1,7 @@
+#crear usuario
+#menu
+
+contrasena = 2
+usuario = 3
+
+print(contrasena)
